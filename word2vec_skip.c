@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 #include <pthread.h>
 
 #define MAX_STRING 100
@@ -41,6 +42,8 @@ int binary = 0, cbow = 1, debug_mode = 2, window = 5, min_count = 5, num_threads
 int *vocab_hash;
 long long vocab_max_size = 1000, vocab_size = 0, layer1_size = 100;
 long long train_words = 0, word_count_actual = 0, iter = 5, file_size = 0, classes = 0;
+volatile long long pair_count=0;
+struct timeval start_wall, now_wall;
 real alpha = 0.025, starting_alpha, sample = 1e-3;
 real *syn0, *syn1, *syn1neg, *expTable;
 clock_t start;
@@ -315,6 +318,7 @@ void *TrainModelThread(void *id) {
   long long l1, l2, c, target, label, local_iter = iter;
   unsigned long long next_random = (long long)id;
   char eof = 0;
+  real rate;
   real f, g;
   clock_t now;
   real *neu1 = (real *)calloc(layer1_size, sizeof(real));
@@ -327,9 +331,17 @@ void *TrainModelThread(void *id) {
       last_word_count = word_count;
       if ((debug_mode > 1)) {
         now=clock();
-        printf("%cAlpha: %f  Progress: %.2f%%  Words/thread/sec: %.2fk  ", 13, alpha,
+        gettimeofday(&now_wall, NULL);
+        rate=word_count_actual / (real)(now_wall.tv_sec - start_wall.tv_sec + 1);
+        printf("%cAlpha: %f  Words: %lli Pairs: %lli Progress: %.2f%%  Words/thread/sec: %.2fk  Words/wall %.2f Total estimate %.2f", 13,
+         alpha,
+         word_count_actual,
+         pair_count,
          word_count_actual / (real)(iter * train_words + 1) * 100,
-         word_count_actual / ((real)(now - start + 1) / (real)CLOCKS_PER_SEC * 1000));
+         word_count_actual / ((real)(now - start + 1) / (real)CLOCKS_PER_SEC * 1000),
+         rate,
+         iter * train_words/rate
+         );
         fflush(stdout);
       }
       alpha = starting_alpha * (1 - word_count_actual / (real)(iter * train_words + 1));
@@ -408,6 +420,7 @@ void *TrainModelThread(void *id) {
         }
         // Learn weights input -> hidden
         for (c = 0; c < layer1_size; c++) syn0[c + l1] += neu1e[c];
+        pair_count+=1;
       }
     }
     sentence_position++;
@@ -434,6 +447,7 @@ void TrainModel() {
   InitNet();
   if (negative > 0) InitUnigramTable();
   start = clock();
+  gettimeofday(&start_wall, NULL);
   for (a = 0; a < num_threads; a++) pthread_create(&pt[a], NULL, TrainModelThread, (void *)a);
   for (a = 0; a < num_threads; a++) pthread_join(pt[a], NULL);
   fo = fopen(output_file, "wb");
