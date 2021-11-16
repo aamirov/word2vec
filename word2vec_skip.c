@@ -450,6 +450,11 @@ void TrainModel() {
   gettimeofday(&start_wall, NULL);
   for (a = 0; a < num_threads; a++) pthread_create(&pt[a], NULL, TrainModelThread, (void *)a);
   for (a = 0; a < num_threads; a++) pthread_join(pt[a], NULL);
+  gettimeofday(&now_wall, NULL);
+  printf("Total: %lli pairs, in %li wall secs, rate %f pairs/sec\n",
+      pair_count,
+      now_wall.tv_sec - start_wall.tv_sec,
+      pair_count / (real)(now_wall.tv_sec - start_wall.tv_sec + 1));
   fo = fopen(output_file, "wb");
   if (classes == 0) {
     // Save the word vectors
