@@ -332,14 +332,16 @@ void *TrainModelThread(void *id) {
       if ((debug_mode > 1)) {
         now=clock();
         gettimeofday(&now_wall, NULL);
-        rate=word_count_actual / (real)(now_wall.tv_sec - start_wall.tv_sec + 1);
-        printf("%cAlpha: %f  Words: %lli Pairs: %lli Progress: %.2f%%  Words/thread/sec: %.2fk  Words/wall %.2f Total estimate %.2f", 13,
+        real time_elapsed=now_wall.tv_sec - start_wall.tv_sec + 1;
+        rate=word_count_actual / time_elapsed;
+        printf("%cAlpha: %f  Words: %lli Pairs: %lli Progress: %.2f%%  Words/thread/sec: %.2fk  Words/wall %.2f Pairs/wall %.2f Total estimate %.2f", 13,
          alpha,
          word_count_actual,
          pair_count,
          word_count_actual / (real)(iter * train_words + 1) * 100,
          word_count_actual / ((real)(now - start + 1) / (real)CLOCKS_PER_SEC * 1000),
          rate,
+         pair_count/time_elapsed, 
          iter * train_words/rate
          );
         fflush(stdout);
