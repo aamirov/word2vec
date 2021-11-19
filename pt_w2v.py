@@ -6,8 +6,8 @@ import torch.nn as nn
 class w2w(nn.Module):
     def __init__(self, vocab_size, dim, nneg, batch_size, device):
         super(w2w, self).__init__()
-        self.input_emb = nn.Embedding(vocab_size, dim)
-        self.output_emb = nn.Embedding(vocab_size, dim)
+        self.input_emb = nn.Embedding(vocab_size, dim, sparse=True)
+        self.output_emb = nn.Embedding(vocab_size, dim , sparse=True)
         self.loss_fct = torch.nn.BCEWithLogitsLoss( reduction="sum")
         self.t_target=torch.cat(
             [torch.ones([batch_size, 1],dtype=torch.float32, device=device),
@@ -26,27 +26,30 @@ class w2w(nn.Module):
         t_loss=self.loss_fct(t_logits, self.t_target)
         return t_loss
 
-vocab_size=70000
+vocab_size=987000
 nneg=25
-batch_size=70000
+batch_size=256*1024
 dim=128
 
+#device="cpu"
 device = "cuda:0" if torch.cuda.is_available()  else "cpu"
+print("Using device", device)
 
 model=w2w(vocab_size, dim, nneg, batch_size, device)
 model.to(device)
 optimizer=torch.optim.SGD(model.parameters(),lr=0.001)
 rnd=np.random.RandomState(230718)
 
-T=1000
+T=1000000//batch_size
 start=time.time()
 for t in range(T):
-    input_ids=rnd.randint(low=0, high=vocab_size, size=[batch_size])
-    output_ids=rnd.randint(low=0, high=vocab_size, size=[batch_size, nneg+1])
+    if True:# t==0:
+      input_ids=rnd.randint(low=0, high=vocab_size, size=[batch_size])
+      output_ids=rnd.randint(low=0, high=vocab_size, size=[batch_size, nneg+1])
     model.zero_grad()
     loss=model(torch.tensor(input_ids, device=device), torch.tensor(output_ids, device=device))
     loss.backward()
     optimizer.step()
 
 elapsed=time.time()-start
-print("Total", elapsed, "sec,", T/elapsed, "batch/sec", (T*batch_size)/elapsed, "pairs/sec")
+print("Batch size", batch_size, "Total", elapsed, "sec,", T/elapsed, "batch/sec", (T*batch_size)/elapsed, "pairs/sec")
