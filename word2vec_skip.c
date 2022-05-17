@@ -45,7 +45,7 @@ long long train_words = 0, word_count_actual = 0, iter = 5, file_size = 0, class
 volatile long long pair_count=0;
 struct timeval start_wall, now_wall;
 real alpha = 0.025, starting_alpha, sample = 1e-3;
-real *syn0, *syn1, *syn1neg, *expTable;
+real *syn0, *syn1neg, *expTable;
 clock_t start;
 
 int hs = 0, negative = 5;
@@ -464,7 +464,11 @@ void TrainModel() {
     for (a = 0; a < vocab_size; a++) {
       fprintf(fo, "%s ", vocab[a].word);
       if (binary) for (b = 0; b < layer1_size; b++) fwrite(&syn0[a * layer1_size + b], sizeof(real), 1, fo);
-      else for (b = 0; b < layer1_size; b++) fprintf(fo, "%lf ", syn0[a * layer1_size + b]);
+      else 
+	  {
+		  for (b = 0; b < layer1_size; b++) fprintf(fo, "%lf ", syn0[a * layer1_size + b]);
+		  for (b = 0; b < layer1_size; b++) fprintf(fo, "%lf ", syn1neg[a * layer1_size + b]);
+	  }
       fprintf(fo, "\n");
     }
   } else {
